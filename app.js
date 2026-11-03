@@ -1,120 +1,54 @@
-const STORAGE_KEY = "redro-workforce-v1";
-const translations = {
-  en: {
-    dashboard:"Dashboard",employees:"Employees",branches:"Branches",attendance:"Attendance",reports:"Reports",activity:"Activity log",settings:"Settings",
-    localData:"Data stored on this device",overview:"WORKSPACE OVERVIEW",welcome:"Good day.",welcomeSub:"Here is your workforce at a glance.",recordMovement:"Record attendance",
-    totalEmployees:"Total employees",acrossBranches:"Across all branches",currentlyPresent:"Currently present",checkedInToday:"Checked in today",lateArrivals:"Late arrivals",lateToday:"Late today",checkedOut:"Checked out",leftToday:"Left today",
-    liveOverview:"LIVE OVERVIEW",todaysMovements:"Today's movements",viewAll:"View all",noMovements:"No movements recorded yet",movementHint:"Attendance activity will appear here.",
-    getStarted:"GET STARTED",quickAccess:"Quick access",manageEmployees:"Manage employees",manageEmployeesSub:"Add and view employee files",manageBranches:"Manage branches",manageBranchesSub:"Set up work locations",viewReports:"View reports",viewReportsSub:"Review attendance records",offlineFirst:"Offline-first workspace",
-    attendanceAction:"ATTENDANCE ACTION",selectEmployee:"Select employee",autoActionHint:"The next valid action is selected automatically.",cancel:"Cancel",confirm:"Confirm",
-    noEmployees:"No employees available",checkIn:"Check in",checkOut:"Check out",alreadyComplete:"Today's attendance is complete for this employee.",saved:"Attendance movement recorded.",employeeMissing:"Please select an employee.",present:"Present",left:"Checked out",late:"Late"
-  },
-  ar: {
-    dashboard:"لوحة التحكم",employees:"الموظفون",branches:"الفروع",attendance:"الحضور",reports:"التقارير",activity:"سجل النشاط",settings:"الإعدادات",
-    localData:"البيانات محفوظة على هذا الجهاز",overview:"نظرة عامة",welcome:"أهلاً بك.",welcomeSub:"إليك ملخص حالة الموظفين اليوم.",recordMovement:"تسجيل حركة دوام",
-    totalEmployees:"إجمالي الموظفين",acrossBranches:"في جميع الفروع",currentlyPresent:"الموجودون حالياً",checkedInToday:"سجّلوا الحضور اليوم",lateArrivals:"حالات التأخير",lateToday:"تأخير اليوم",checkedOut:"غادروا العمل",leftToday:"سجّلوا الانصراف",
-    liveOverview:"نظرة مباشرة",todaysMovements:"حركات اليوم",viewAll:"عرض الكل",noMovements:"لا توجد حركات مسجلة بعد",movementHint:"ستظهر حركات الدوام هنا.",
-    getStarted:"الوصول السريع",quickAccess:"اختصارات",manageEmployees:"إدارة الموظفين",manageEmployeesSub:"إضافة الموظفين وعرض ملفاتهم",manageBranches:"إدارة الفروع",manageBranchesSub:"إعداد أماكن العمل",viewReports:"عرض التقارير",viewReportsSub:"مراجعة سجلات الدوام",offlineFirst:"يعمل دون اتصال بعد التحميل",
-    attendanceAction:"تسجيل حركة دوام",selectEmployee:"اختر الموظف",autoActionHint:"سيحدد النظام الحركة التالية تلقائياً.",cancel:"إلغاء",confirm:"تأكيد",
-    noEmployees:"لا يوجد موظفون",checkIn:"تسجيل حضور",checkOut:"تسجيل انصراف",alreadyComplete:"تم إكمال دوام هذا الموظف لليوم.",saved:"تم تسجيل حركة الدوام.",employeeMissing:"يرجى اختيار موظف.",present:"حاضر",left:"منصرف",late:"متأخر"
-  }
-};
-let language = localStorage.getItem("rw-language") || "en";
-let state = loadState();
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
-function loadState(){
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {employees:[],branches:[],movements:[]}; }
-  catch { return {employees:[],branches:[],movements:[]}; }
-}
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function t(key){ return translations[language][key] || key; }
-function todayKey(){ const d=new Date(); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-"); }
-function timeLabel(value){ return new Date(value).toLocaleTimeString(language==="ar"?"ar":"en",{hour:"2-digit",minute:"2-digit"}); }
-function applyLanguage(){
-  document.documentElement.lang=language;
-  document.documentElement.dir=language==="ar"?"rtl":"ltr";
-  $$("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
-  $("#languageButton").textContent=language==="en"?"العربية":"English";
-  $("#pageTitle").textContent=t(document.querySelector(".nav-link.active")?.dataset.view || "dashboard");
-  renderDashboard();
-}
-function renderDashboard(){
-  const today=todayKey();
-  const movements=state.movements.filter(m=>m.date===today);
-  const checkedIn=new Set(movements.filter(m=>m.type==="in").map(m=>m.employeeId));
-  const checkedOut=new Set(movements.filter(m=>m.type==="out").map(m=>m.employeeId));
-  const late=new Set(movements.filter(m=>m.type==="in"&&m.late).map(m=>m.employeeId));
-  $("#statEmployees").textContent=state.employees.length;
-  $("#statPresent").textContent=[...checkedIn].filter(id=>!checkedOut.has(id)).length;
-  $("#statLate").textContent=late.size;
-  $("#statOut").textContent=checkedOut.size;
-  const root=$("#recentMovements");
-  if(!movements.length){root.innerHTML='<div class="empty-state"><span>◷</span><strong data-i18n="noMovements"></strong><p data-i18n="movementHint"></p></div>';root.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));return;}
-  root.innerHTML=movements.slice().reverse().slice(0,7).map(m=>{
-    const employee=state.employees.find(e=>e.id===m.employeeId);
-    return '<div class="movement-item"><span class="movement-dot '+(m.type==="out"?"out":"")+'"></span><div class="movement-info"><strong>'+escapeHtml(employee?.name||"Deleted employee")+'</strong><small>'+ (m.type==="in"?t("checkIn"):t("checkOut"))+(m.late?" · "+t("late"):"")+'</small></div><span class="movement-time">'+timeLabel(m.timestamp)+'</span></div>';
-  }).join("");
-}
-function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-function refreshEmployeeOptions(){
-  const select=$("#attendanceEmployee");
-  select.innerHTML=state.employees.map(e=>{
-    const day=state.movements.filter(m=>m.date===todayKey()&&m.employeeId===e.id);
-    const hasIn=day.some(m=>m.type==="in"),hasOut=day.some(m=>m.type==="out");
-    const status=hasOut?t("alreadyComplete"):hasIn?t("checkOut"):t("checkIn");
-    return '<option value="'+e.id+'" '+(hasOut?"disabled":"")+'>'+escapeHtml(e.name)+' · '+e.id+' — '+status+'</option>';
-  }).join("");
-  if(!state.employees.length)select.innerHTML='<option value="">'+t("noEmployees")+'</option>';
-}
-function openAttendance(){
-  refreshEmployeeOptions();
-  if(!state.employees.length){alert(t("noEmployees"));return;}
-  $("#attendanceDialog").showModal();
-}
-function recordMovement(employeeId){
-  const employee=state.employees.find(e=>e.id===employeeId);
-  if(!employee)return;
-  const day=state.movements.filter(m=>m.date===todayKey()&&m.employeeId===employeeId);
-  if(day.some(m=>m.type==="out")){alert(t("alreadyComplete"));return;}
-  const type=day.some(m=>m.type==="in")?"out":"in";
-  const timestamp=new Date().toISOString();
-  let late=false;
-  if(type==="in"&&employee.branchId){
-    const branch=state.branches.find(b=>b.id===employee.branchId);
-    if(branch?.startTime){
-      const now=new Date();
-      const [h,m]=branch.startTime.split(":").map(Number);
-      late=now.getHours()*60+now.getMinutes()>h*60+m;
-    }
-  }
-  state.movements.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),employeeId,type,date:todayKey(),timestamp,late});
-  saveState();renderDashboard();$("#attendanceDialog").close();
-  const button=$("#quickAttendance");button.blur();
-}
-function switchView(view){
-  $$(".nav-link[data-view]").forEach(el=>el.classList.toggle("active",el.dataset.view===view));
-  $("#pageTitle").textContent=t(view);
-  $("#sidebar").classList.remove("open");$("#mobileOverlay").classList.remove("show");
-  if(view!=="dashboard"){
-    $("#viewRoot").innerHTML='<section class="welcome-row"><div><p class="eyebrow">REDRO WORKFORCE</p><h1>'+t(view)+'</h1><p class="muted">'+(language==="ar"?"هذا القسم قيد التجهيز.":"This section is being prepared.")+'</p></div></section><section class="panel"><div class="empty-state"><span>✦</span><strong>'+(language==="ar"?"سيتم بناء هذا القسم ضمن مراحل المشروع التالية":"This module will be built in the next project milestones")+'</strong><p>'+(language==="ar"?"لم تتم إضافة وظائف شكلية أو أزرار غير عاملة.":"No placeholder actions are presented as working features.")+'</p></div></section>';
-  }else{
-    location.reload();
-  }
-}
-$$(".nav-link[data-view]").forEach(el=>el.addEventListener("click",()=>switchView(el.dataset.view)));
-$$("[data-open-view]").forEach(el=>el.addEventListener("click",()=>switchView(el.dataset.openView)));
-$("#quickAttendance").addEventListener("click",openAttendance);
-$("#attendanceForm").addEventListener("submit",event=>{
-  event.preventDefault();
-  const id=$("#attendanceEmployee").value;
-  if(!id){alert(t("employeeMissing"));return;}
-  recordMovement(id);
-});
-$$(".close-dialog").forEach(el=>el.addEventListener("click",()=>$("#attendanceDialog").close()));
-$("#languageButton").addEventListener("click",()=>{language=language==="en"?"ar":"en";localStorage.setItem("rw-language",language);applyLanguage();});
+const DB_NAME="redro-workforce", DB_VERSION=1;
+const translations={en:{dashboard:"Dashboard",employees:"Employees",branches:"Branches",attendance:"Attendance",reports:"Reports",activity:"Activity log",settings:"Settings",addEmployee:"Add employee",addBranch:"Add branch",name:"Full name",address:"Residence / address",birth:"Place of birth",phones:"Phone numbers",branch:"Branch",startDate:"Employment start date",save:"Save",cancel:"Cancel",search:"Search name or ID",actions:"Actions",edit:"Edit",delete:"Delete",noData:"No records yet",employeeId:"Employee ID",startTime:"Shift starts",endTime:"Shift ends",checkIn:"Check in",checkOut:"Check out",absent:"Record absence",leave:"Record leave",date:"Date",status:"Status",time:"Time",present:"Present",late:"Late",checkedOut:"Checked out",absence:"Absent",onLeave:"On leave",allBranches:"All branches",filter:"Filter",exportCSV:"Export CSV",daily:"Daily report",from:"From",to:"To",manualRecords:"Manual records",reason:"Reason (optional)",confirmDelete:"Permanently delete this employee and all linked records?",noEmployees:"Add an employee first",scheduleWarning:"Changing shift times requires the admin password.",password:"Admin password",setPassword:"Set admin password",changePassword:"Change password",backup:"Backup data",restore:"Restore backup",download:"Download backup",chooseFile:"Choose backup file",created:"Created",employeeSaved:"Employee saved",branchSaved:"Branch saved",recorded:"Record saved",required:"Please complete required fields",noBranch:"Unassigned",all:"All",total:"Total",hours:"Work hours",lateness:"Late arrivals",movements:"Movements",today:"Today",employee:"Employee",branchName:"Branch name",deleteBranch:"Delete branch",cannotDelete:"Reassign employees before deleting this branch.",security:"Security",passwordSet:"Password saved",wrongPassword:"Incorrect password",unlock:"Confirm",close:"Close",noRecords:"No records for this selection",permanent:"Permanent deletion",backupDone:"Backup downloaded",restoreDone:"Backup restored",activityEmpty:"No activity yet",recordType:"Record type",absenceSaved:"Absence recorded",leaveSaved:"Leave recorded",exportPDF:"Print / Save PDF",allEmployees:"All employees",employeeReport:"Employee report",noEditAttendance:"Attendance records cannot be edited or undone.",localWarning:"Data is stored only in this browser. Export backups regularly."},ar:{dashboard:"لوحة التحكم",employees:"الموظفون",branches:"الفروع",attendance:"الحضور",reports:"التقارير",activity:"سجل النشاط",settings:"الإعدادات",addEmployee:"إضافة موظف",addBranch:"إضافة فرع",name:"الاسم الكامل",address:"السكن / العنوان",birth:"مكان الولادة",phones:"أرقام الهاتف",branch:"الفرع",startDate:"تاريخ بدء العمل",save:"حفظ",cancel:"إلغاء",search:"بحث بالاسم أو الرقم",actions:"الإجراءات",edit:"تعديل",delete:"حذف",noData:"لا توجد سجلات بعد",employeeId:"رقم الموظف",startTime:"بداية الدوام",endTime:"نهاية الدوام",checkIn:"تسجيل حضور",checkOut:"تسجيل انصراف",absent:"تسجيل غياب",leave:"تسجيل إجازة",date:"التاريخ",status:"الحالة",time:"الوقت",present:"حاضر",late:"متأخر",checkedOut:"منصرف",absence:"غائب",onLeave:"إجازة",allBranches:"كل الفروع",filter:"تصفية",exportCSV:"تصدير CSV",daily:"التقرير اليومي",from:"من",to:"إلى",manualRecords:"السجلات اليدوية",reason:"السبب (اختياري)",confirmDelete:"حذف الموظف نهائياً مع جميع سجلاته المرتبطة؟",noEmployees:"أضف موظفاً أولاً",scheduleWarning:"تغيير أوقات الدوام يتطلب كلمة مرور المسؤول.",password:"كلمة مرور المسؤول",setPassword:"تعيين كلمة مرور المسؤول",changePassword:"تغيير كلمة المرور",backup:"نسخ احتياطي",restore:"استعادة نسخة",download:"تنزيل النسخة الاحتياطية",chooseFile:"اختر ملف النسخة",created:"تاريخ الإضافة",employeeSaved:"تم حفظ الموظف",branchSaved:"تم حفظ الفرع",recorded:"تم حفظ السجل",required:"يرجى إكمال الحقول المطلوبة",noBranch:"غير محدد",all:"الكل",total:"الإجمالي",hours:"ساعات العمل",lateness:"مرات التأخير",movements:"الحركات",today:"اليوم",employee:"الموظف",branchName:"اسم الفرع",deleteBranch:"حذف الفرع",cannotDelete:"انقل الموظفين إلى فرع آخر قبل حذف هذا الفرع.",security:"الأمان",passwordSet:"تم حفظ كلمة المرور",wrongPassword:"كلمة المرور غير صحيحة",unlock:"تأكيد",close:"إغلاق",noRecords:"لا توجد سجلات لهذا الاختيار",permanent:"حذف نهائي",backupDone:"تم تنزيل النسخة الاحتياطية",restoreDone:"تمت استعادة النسخة",activityEmpty:"لا يوجد نشاط بعد",recordType:"نوع السجل",absenceSaved:"تم تسجيل الغياب",leaveSaved:"تم تسجيل الإجازة",exportPDF:"طباعة / حفظ PDF",allEmployees:"كل الموظفين",employeeReport:"تقرير الموظف",noEditAttendance:"لا يمكن تعديل حركات الدوام أو التراجع عنها.",localWarning:"البيانات محفوظة في هذا المتصفح فقط. نزّل نسخة احتياطية بانتظام."}};
+let lang=localStorage.getItem("rw-language")||"ar", db, data={employees:[],branches:[],records:[],activity:[],settings:{}}, currentView="dashboard";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], t=k=>translations[lang][k]||k;
+const uid=()=>crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random();
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtTime=s=>new Date(s).toLocaleTimeString(lang==="ar"?"ar":"en",{hour:"2-digit",minute:"2-digit"});
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);req.onupgradeneeded=()=>{const d=req.result;for(const n of ["employees","branches","records","activity","settings"])if(!d.objectStoreNames.contains(n))d.createObjectStore(n,{keyPath:"id"});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+function all(store){return new Promise((resolve,reject)=>{const r=db.transaction(store).objectStore(store).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+function put(store,obj){return new Promise((resolve,reject)=>{const tx=db.transaction(store,"readwrite");tx.objectStore(store).put(obj);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}
+function del(store,id){return new Promise((resolve,reject)=>{const tx=db.transaction(store,"readwrite");tx.objectStore(store).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}
+async function refresh(){for(const s of Object.keys(data))data[s]=await all(s);}
+async function log(action,details=""){await put("activity",{id:uid(),action,details,at:new Date().toISOString()});}
+function branchName(id){return data.branches.find(b=>b.id===id)?.name||t("noBranch")}
+function employeeName(id){return data.employees.find(e=>e.id===id)?.name||"—"}
+function page(title,tools,body){$("#viewRoot").innerHTML='<div class="page-head"><div><p class="eyebrow">REDRO WORKFORCE</p><h1>'+title+'</h1></div><div class="page-tools">'+(tools||"")+'</div></div>'+body;}
+function btn(label,action,cls="primary-button"){return '<button class="'+cls+'" data-action="'+action+'">'+label+'</button>'}
+function empty(){return '<div class="empty-state"><strong>'+t("noData")+'</strong></div>'}
+function table(headers,rows){return '<div class="table-wrap"><table><thead><tr>'+headers.map(h=>'<th>'+h+'</th>').join("")+'</tr></thead><tbody>'+(rows||'<tr><td colspan="'+headers.length+'">'+t("noData")+'</td></tr>')+'</tbody></table></div>'}
+function field(label,name,type="text",value="",required=false){return '<label class="field">'+label+'<input name="'+name+'" type="'+type+'" value="'+esc(value)+'" '+(required?"required":"")+'></label>'}
+function selectField(label,name,options,value=""){return '<label class="field">'+label+'<select name="'+name+'">'+options.map(o=>'<option value="'+esc(o.value)+'" '+(o.value===value?"selected":"")+'>'+esc(o.label)+'</option>').join("")+'</select></label>'}
+function branchOptions(){return [{value:"",label:t("noBranch")},...data.branches.map(b=>({value:b.id,label:b.name}))]}
+function showDialog(title,html,onSubmit){const d=$("#workDialog");d.innerHTML='<form class="dialog-form" id="workForm"><div class="dialog-heading"><h2>'+title+'</h2><button type="button" class="icon-button" data-close>×</button></div>'+html+'<div class="dialog-actions"><button type="button" class="secondary-button" data-close>'+t("cancel")+'</button><button class="primary-button">'+t("save")+'</button></div></form>';d.showModal();$$("[data-close]").forEach(b=>b.onclick=()=>d.close());$("#workForm").onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget);await onSubmit(fd);d.close();await refresh();render();};}
+async function renderDashboard(){const day=data.records.filter(r=>r.date===today());const ins=day.filter(r=>r.type==="in"),outs=day.filter(r=>r.type==="out");const active=ins.filter(i=>!outs.some(o=>o.employeeId===i.employeeId));const late=ins.filter(r=>r.late);const cards=[[t("total"),data.employees.length],[t("present"),active.length],[t("late"),late.length],[t("checkedOut"),outs.length]];page(t("dashboard"),btn("＋ "+t("checkIn"),"new-attendance"),'<div class="stats-grid">'+cards.map((c,i)=>'<article class="stat-card"><span class="stat-label">'+c[0]+'</span><strong>'+c[1]+'</strong></article>').join("")+'</div><section class="panel"><div class="panel-heading"><h2>'+t("movements")+' · '+t("today")+'</h2></div>'+table([t("employee"),t("branch"),t("status"),t("time")],day.slice().sort((a,b)=>b.at.localeCompare(a.at)).map(r=>'<tr><td>'+esc(employeeName(r.employeeId))+'</td><td>'+esc(branchName(data.employees.find(e=>e.id===r.employeeId)?.branchId))+'</td><td>'+t(r.type==="in"?(r.late?"late":"present"):"checkedOut")+'</td><td>'+fmtTime(r.at)+'</td></tr>').join(""))+'</section>');}
+function renderEmployees(){const rows=data.employees.map(e=>'<tr><td><strong>'+esc(e.name)+'</strong><small>'+esc(e.id)+'</small></td><td>'+esc(branchName(e.branchId))+'</td><td>'+esc(e.phones||"—")+'</td><td>'+esc(e.startDate||"—")+'</td><td><button class="text-button" data-action="edit-employee" data-id="'+e.id+'">'+t("edit")+'</button> <button class="text-button danger" data-action="delete-employee" data-id="'+e.id+'">'+t("delete")+'</button></td></tr>').join("");page(t("employees"),btn("＋ "+t("addEmployee"),"add-employee"),'<div class="panel"><input class="search-input" id="employeeSearch" placeholder="'+t("search")+'">'+table([t("employee"),t("branch"),t("phones"),t("startDate"),t("actions")],rows)+'</div>');}
+function employeeForm(e={}){showDialog(e.id?t("edit"):t("addEmployee"),field(t("name"),"name","text",e.name||"",true)+field(t("address"),"address","text",e.address||"")+field(t("birth"),"birth","text",e.birth||"")+field(t("phones"),"phones","tel",e.phones||"")+selectField(t("branch"),"branchId",branchOptions(),e.branchId||"")+field(t("startDate"),"startDate","date",e.startDate||today(),true),async fd=>{const obj={id:e.id||"RW-"+String(Math.max(0,...data.employees.map(x=>Number(x.id.split("-").pop())||0))+1).padStart(4,"0"),name:fd.get("name").trim(),address:fd.get("address"),birth:fd.get("birth"),phones:fd.get("phones"),branchId:fd.get("branchId"),startDate:fd.get("startDate")};if(!obj.name)throw Error(t("required"));await put("employees",obj);await log(e.id?"employee-updated":"employee-added",obj.id);});}
+function renderBranches(){const rows=data.branches.map(b=>'<tr><td>'+esc(b.name)+'</td><td>'+esc(b.startTime)+' – '+esc(b.endTime)+'</td><td>'+data.employees.filter(e=>e.branchId===b.id).length+'</td><td><button class="text-button" data-action="edit-branch" data-id="'+b.id+'">'+t("edit")+'</button> <button class="text-button danger" data-action="delete-branch" data-id="'+b.id+'">'+t("delete")+'</button></td></tr>').join("");page(t("branches"),btn("＋ "+t("addBranch"),"add-branch"),'<div class="panel">'+table([t("branchName"),t("startTime")+" / "+t("endTime"),t("employees"),t("actions")],rows)+'</div>');}
+async function branchForm(b={}){let password="";if(b.id){password=await askPassword(t("scheduleWarning"));if(password===null)return;if(!await verifyPassword(password)){alert(t("wrongPassword"));return;}}showDialog(b.id?t("edit"):t("addBranch"),field(t("branchName"),"name","text",b.name||"",true)+field(t("startTime"),"startTime","time",b.startTime||"09:00",true)+field(t("endTime"),"endTime","time",b.endTime||"17:00",true),async fd=>{const obj={id:b.id||uid(),name:fd.get("name").trim(),startTime:fd.get("startTime"),endTime:fd.get("endTime")};await put("branches",obj);await log(b.id?"branch-changed":"branch-added",obj.name+" "+obj.startTime+"–"+obj.endTime);});}
+function renderAttendance(){const rows=data.records.slice().sort((a,b)=>b.at.localeCompare(a.at)).map(r=>'<tr><td>'+esc(r.date)+'</td><td>'+esc(employeeName(r.employeeId))+'</td><td>'+esc(branchName(data.employees.find(e=>e.id===r.employeeId)?.branchId))+'</td><td>'+t(r.type==="in"?(r.late?"late":"present"):"checkedOut")+'</td><td>'+fmtTime(r.at)+'</td></tr>').join("");page(t("attendance"),btn("＋ "+t("checkIn"),"new-attendance"),'<div class="panel"><p class="muted">'+t("noEditAttendance")+'</p>'+table([t("date"),t("employee"),t("branch"),t("status"),t("time")],rows)+'</div>');}
+function attendanceDialog(){if(!data.employees.length){alert(t("noEmployees"));return;}const opts=data.employees.filter(e=>!data.records.some(r=>r.date===today()&&r.employeeId===e.id&&r.type==="out")).map(e=>({value:e.id,label:e.name+" · "+e.id}));showDialog(t("checkIn"),selectField(t("employee"),"employeeId",opts),async fd=>{const id=fd.get("employeeId"),emp=data.employees.find(e=>e.id===id),day=data.records.filter(r=>r.date===today()&&r.employeeId===id);if(day.some(r=>r.type==="out"))return;const type=day.some(r=>r.type==="in")?"out":"in",now=new Date(),branch=data.branches.find(b=>b.id===emp.branchId);let late=false;if(type==="in"&&branch){const [h,m]=branch.startTime.split(":").map(Number);late=now.getHours()*60+now.getMinutes()>h*60+m;}const rec={id:uid(),employeeId:id,type,date:today(),at:now.toISOString(),late};await put("records",rec);await log(type==="in"?"check-in":"check-out",emp.id);});}
+function manualRecord(type){if(!data.employees.length){alert(t("noEmployees"));return;}showDialog(type==="absence"?t("absent"):t("leave"),selectField(t("employee"),"employeeId",data.employees.map(e=>({value:e.id,label:e.name+" · "+e.id})))+field(t("date"),"date","date",today(),true)+field(t("reason"),"reason"),async fd=>{const r={id:uid(),employeeId:fd.get("employeeId"),type,date:fd.get("date"),at:new Date(fd.get("date")+"T12:00:00").toISOString(),reason:fd.get("reason")};await put("records",r);await log(type,employeeName(r.employeeId)+" · "+r.date);});}
+function renderReports(){page(t("reports"),'<button class="secondary-button" data-action="export-csv">'+t("exportCSV")+'</button> <button class="secondary-button" data-action="print">'+t("exportPDF")+'</button>','<div class="panel report-filters">'+field(t("from"),"reportFrom","date",today())+field(t("to"),"reportTo","date",today())+selectField(t("branch"),"reportBranch",[{value:"",label:t("allBranches")},...branchOptions().filter(x=>x.value)])+selectField(t("employee"),"reportEmployee",[{value:"",label:t("allEmployees")},...data.employees.map(e=>({value:e.id,label:e.name}))])+'<button class="primary-button" data-action="run-report">'+t("filter")+'</button></div><div class="panel" id="reportResult">'+reportTable(today(),today(),"","")+'</div>');}
+function filteredRecords(from,to,branch,employee){return data.records.filter(r=>r.date>=from&&r.date<=to&&(!employee||r.employeeId===employee)&&(!branch||data.employees.find(e=>e.id===r.employeeId)?.branchId===branch));}
+function reportTable(from,to,branch,employee){const rs=filteredRecords(from,to,branch,employee);if(!rs.length)return empty();const rows=rs.slice().sort((a,b)=>a.date.localeCompare(b.date)||a.at.localeCompare(b.at)).map(r=>'<tr><td>'+r.date+'</td><td>'+esc(employeeName(r.employeeId))+'</td><td>'+t(r.type==="in"?(r.late?"late":"present"):r.type==="out"?"checkedOut":r.type==="absence"?"absence":"onLeave")+'</td><td>'+fmtTime(r.at)+'</td></tr>').join("");return table([t("date"),t("employee"),t("status"),t("time")],rows);}
+function renderActivity(){const rows=data.activity.slice().sort((a,b)=>b.at.localeCompare(a.at)).map(a=>'<tr><td>'+new Date(a.at).toLocaleString()+'</td><td>'+esc(a.action)+'</td><td>'+esc(a.details)+'</td></tr>').join("");page(t("activity"),"",'<div class="panel">'+(rows?table([t("time"),t("status"),t("details")],rows):empty())+'</div>');}
+async function askPassword(title){return new Promise(resolve=>{showDialog(title,field(t("password"),"password","password","",true),async fd=>resolve(fd.get("password")));$("#workForm").addEventListener("close",()=>resolve(null),{once:true});});}
+async function hashPassword(p,salt){const enc=new TextEncoder(),key=await crypto.subtle.importKey("raw",enc.encode(p),"PBKDF2",false,["deriveBits"]);const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt:enc.encode(salt),iterations:150000,hash:"SHA-256"},key,256);return [...new Uint8Array(bits)].map(x=>x.toString(16).padStart(2,"0")).join("");}
+async function verifyPassword(p){const s=data.settings.admin;if(!s)return true;return await hashPassword(p,s.salt)===s.hash;}
+async function renderSettings(){page(t("settings"),"",'<div class="settings-grid"><section class="panel"><h2>'+t("security")+'</h2><p class="muted">'+t("localWarning")+'</p>'+btn(t("setPassword"),"set-password","secondary-button")+'</section><section class="panel"><h2>'+t("backup")+'</h2><p class="muted">'+t("localWarning")+'</p>'+btn(t("download"),"backup","primary-button")+' <label class="secondary-button file-button">'+t("chooseFile")+'<input type="file" id="restoreFile" accept="application/json" hidden></label></section></div>');}
+async function deleteEmployee(id){const e=data.employees.find(x=>x.id===id);if(!e||!confirm(t("confirmDelete")))return;const p=await askPassword(t("permanent"));if(p===null||!await verifyPassword(p)){alert(t("wrongPassword"));return;}for(const r of data.records.filter(x=>x.employeeId===id))await del("records",r.id);await del("employees",id);await log("employee-deleted","Personal data and linked records deleted");await refresh();render();}
+async function deleteBranch(id){if(data.employees.some(e=>e.branchId===id)){alert(t("cannotDelete"));return;}if(confirm(t("deleteBranch")+"?")){await del("branches",id);await log("branch-deleted");await refresh();render();}}
+async function setPassword(){const old=data.settings.admin?await askPassword(t("password")):null;if(data.settings.admin&&(old===null||!await verifyPassword(old))){alert(t("wrongPassword"));return;}const p=prompt(t("setPassword"));if(!p||p.length<6){alert(t("required"));return;}const salt=uid();data.settings.admin={id:"admin",salt,hash:await hashPassword(p,salt)};await put("settings",data.settings.admin);await log("security-password-changed");await refresh();alert(t("passwordSet"));}
+async function backup(){const payload={version:1,createdAt:new Date().toISOString(),...data};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="redro-workforce-backup-"+today()+".json";a.click();URL.revokeObjectURL(url);await log("backup-created");}
+async function restore(file){const p=JSON.parse(await file.text());if(!p||p.version!==1||!Array.isArray(p.employees)||!Array.isArray(p.records)||!Array.isArray(p.branches))throw Error("Invalid backup");for(const s of ["employees","branches","records","activity","settings"])for(const x of data[s])await del(s,x.id);for(const s of ["employees","branches","records","activity","settings"])for(const x of p[s]||[])await put(s,x);await log("backup-restored");await refresh();render();alert(t("restoreDone"));}
+function render(){applyShell();switch(currentView){case"employees":renderEmployees();break;case"branches":renderBranches();break;case"attendance":renderAttendance();break;case"reports":renderReports();break;case"activity":renderActivity();break;case"settings":renderSettings();break;default:renderDashboard();}}
+function applyShell(){document.documentElement.lang=lang;document.documentElement.dir=lang==="ar"?"rtl":"ltr";$$("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));$("#languageButton").textContent=lang==="ar"?"English":"العربية";$("#todayLabel").textContent=new Date().toLocaleDateString(lang==="ar"?"ar":"en",{weekday:"short",month:"short",day:"numeric"});$$("#sidebar [data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===currentView));$("#pageTitle").textContent=t(currentView);}
+document.addEventListener("click",async e=>{const nav=e.target.closest("[data-view]");if(nav){currentView=nav.dataset.view;render();$("#sidebar").classList.remove("open");$("#mobileOverlay").classList.remove("show");return;}const quick=e.target.closest("[data-open-view]");if(quick){currentView=quick.dataset.openView;render();return;}const b=e.target.closest("[data-action]");if(!b)return;const id=b.dataset.id;switch(b.dataset.action){case"add-employee":employeeForm();break;case"edit-employee":employeeForm(data.employees.find(x=>x.id===id));break;case"delete-employee":await deleteEmployee(id);break;case"add-branch":branchForm();break;case"edit-branch":await branchForm(data.branches.find(x=>x.id===id));break;case"delete-branch":await deleteBranch(id);break;case"new-attendance":attendanceDialog();break;case"absent":manualRecord("absence");break;case"leave":manualRecord("leave");break;case"set-password":await setPassword();break;case"backup":await backup();break;case"run-report":{const f=$("#reportFrom").value,to=$("#reportTo").value,br=$('[name="reportBranch"]').value,emp=$('[name="reportEmployee"]').value;$("#reportResult").innerHTML=reportTable(f,to,br,emp);break;}case"export-csv":{const rs=filteredRecords($("#reportFrom")?.value||today(),$("#reportTo")?.value||today(),$('[name="reportBranch"]')?.value||"",$('[name="reportEmployee"]')?.value||"");const lines=[["Date","Employee","Employee ID","Status","Time"],...rs.map(r=>[r.date,employeeName(r.employeeId),r.employeeId,r.type,r.at])];const csv="\uFEFF"+lines.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");const a=document.createElement("a"),u=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.href=u;a.download="redro-workforce-report.csv";a.click();URL.revokeObjectURL(u);break;}case"print":window.print();break;}});
+document.addEventListener("input",e=>{if(e.target.id==="employeeSearch"){const q=e.target.value.toLowerCase();$$(".table-wrap tbody tr").forEach(r=>r.hidden=!r.textContent.toLowerCase().includes(q));}});
+document.addEventListener("change",async e=>{if(e.target.id==="restoreFile"&&e.target.files[0]){try{await restore(e.target.files[0]);}catch(err){alert("Backup could not be restored: "+err.message);}}});
+$("#languageButton").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";localStorage.setItem("rw-language",lang);render();});
 $("#menuButton").addEventListener("click",()=>{$("#sidebar").classList.add("open");$("#mobileOverlay").classList.add("show");});
 $("#mobileOverlay").addEventListener("click",()=>{$("#sidebar").classList.remove("open");$("#mobileOverlay").classList.remove("show");});
-$("#todayLabel").textContent=new Date().toLocaleDateString(language==="ar"?"ar":"en",{weekday:"short",month:"short",day:"numeric",year:"numeric"});
-applyLanguage();
-if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+(async()=>{db=await openDB();await refresh();$("#viewRoot").innerHTML='<div class="loading-state">REDRO WORKFORCE</div>';render();if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});})();
