@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#17191f">
+  <meta name="description" content="Redro Workforce - Employee and attendance management">
+  <title>Redro Workforce</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" aria-label="Redro Workforce home">
+        <span class="brand-mark">R</span>
+        <span><strong>REDRO</strong><small>WORKFORCE</small></span>
+      </a>
+      <nav class="main-nav" aria-label="Main navigation">
+        <button class="nav-link active" data-view="dashboard"><span>⌂</span><span data-i18n="dashboard">Dashboard</span></button>
+        <button class="nav-link" data-view="employees"><span>♙</span><span data-i18n="employees">Employees</span></button>
+        <button class="nav-link" data-view="branches"><span>⌖</span><span data-i18n="branches">Branches</span></button>
+        <button class="nav-link" data-view="attendance"><span>◷</span><span data-i18n="attendance">Attendance</span></button>
+        <button class="nav-link" data-view="reports"><span>▤</span><span data-i18n="reports">Reports</span></button>
+        <button class="nav-link" data-view="activity"><span>↳</span><span data-i18n="activity">Activity log</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="nav-link" data-view="settings"><span>⚙</span><span data-i18n="settings">Settings</span></button>
+        <div class="local-status"><i></i><span data-i18n="localData">Data stored on this device</span></div>
+      </div>
+    </aside>
+    <main class="main-area">
+      <header class="topbar">
+        <button class="icon-button menu-button" id="menuButton" aria-label="Open navigation">☰</button>
+        <div class="breadcrumb"><span>REDRO</span><b>/</b><strong id="pageTitle">Dashboard</strong></div>
+        <div class="top-actions">
+          <span class="today-label" id="todayLabel"></span>
+          <button class="language-button" id="languageButton">العربية</button>
+          <span class="user-avatar">R</span>
+        </div>
+      </header>
+      <div class="content" id="viewRoot">
+        <section class="welcome-row">
+          <div><p class="eyebrow" data-i18n="overview">WORKSPACE OVERVIEW</p><h1 data-i18n="welcome">Good day.</h1><p class="muted" data-i18n="welcomeSub">Here is your workforce at a glance.</p></div>
+          <button class="primary-button" id="quickAttendance"><span>＋</span><span data-i18n="recordMovement">Record attendance</span></button>
+        </section>
+        <section class="stats-grid" aria-label="Attendance summary">
+          <article class="stat-card"><span class="stat-icon red">♙</span><span class="stat-label" data-i18n="totalEmployees">Total employees</span><strong id="statEmployees">0</strong><small data-i18n="acrossBranches">Across all branches</small></article>
+          <article class="stat-card"><span class="stat-icon green">●</span><span class="stat-label" data-i18n="currentlyPresent">Currently present</span><strong id="statPresent">0</strong><small data-i18n="checkedInToday">Checked in today</small></article>
+          <article class="stat-card"><span class="stat-icon amber">◷</span><span class="stat-label" data-i18n="lateArrivals">Late arrivals</span><strong id="statLate">0</strong><small data-i18n="lateToday">Late today</small></article>
+          <article class="stat-card"><span class="stat-icon slate">↗</span><span class="stat-label" data-i18n="checkedOut">Checked out</span><strong id="statOut">0</strong><small data-i18n="leftToday">Left today</small></article>
+        </section>
+        <section class="dashboard-grid">
+          <article class="panel movements-panel">
+            <div class="panel-heading"><div><p class="eyebrow" data-i18n="liveOverview">LIVE OVERVIEW</p><h2 data-i18n="todaysMovements">Today's movements</h2></div><button class="text-button" data-open-view="attendance" data-i18n="viewAll">View all</button></div>
+            <div id="recentMovements" class="movement-list"><div class="empty-state"><span>◷</span><strong data-i18n="noMovements">No movements recorded yet</strong><p data-i18n="movementHint">Attendance activity will appear here.</p></div></div>
+          </article>
+          <article class="panel shortcuts-panel">
+            <div class="panel-heading"><div><p class="eyebrow" data-i18n="getStarted">GET STARTED</p><h2 data-i18n="quickAccess">Quick access</h2></div></div>
+            <button class="shortcut" data-open-view="employees"><span class="shortcut-icon">♙</span><span><strong data-i18n="manageEmployees">Manage employees</strong><small data-i18n="manageEmployeesSub">Add and view employee files</small></span><b>›</b></button>
+            <button class="shortcut" data-open-view="branches"><span class="shortcut-icon">⌖</span><span><strong data-i18n="manageBranches">Manage branches</strong><small data-i18n="manageBranchesSub">Set up work locations</small></span><b>›</b></button>
+            <button class="shortcut" data-open-view="reports"><span class="shortcut-icon">▤</span><span><strong data-i18n="viewReports">View reports</strong><small data-i18n="viewReportsSub">Review attendance records</small></span><b>›</b></button>
+          </article>
+        </section>
+        <footer class="footer-note">REDRO WORKFORCE <span>•</span> <span data-i18n="offlineFirst">Offline-first workspace</span></footer>
+      </div>
+    </main>
+  </div>
+  <div class="mobile-overlay" id="mobileOverlay"></div>
+  <dialog id="attendanceDialog" class="app-dialog">
+    <form method="dialog" class="dialog-form" id="attendanceForm">
+      <div class="dialog-heading"><div><p class="eyebrow" data-i18n="attendanceAction">ATTENDANCE ACTION</p><h2 data-i18n="recordMovement">Record attendance</h2></div><button class="icon-button close-dialog" aria-label="Close">×</button></div>
+      <label for="attendanceEmployee" data-i18n="selectEmployee">Select employee</label>
+      <select id="attendanceEmployee" required></select>
+      <p class="dialog-hint" data-i18n="autoActionHint">The next valid action is selected automatically.</p>
+      <div class="dialog-actions"><button class="secondary-button close-dialog" type="button" data-i18n="cancel">Cancel</button><button class="primary-button" type="submit" data-i18n="confirm">Confirm</button></div>
+    </form>
+  </dialog>
+  <script src="./app.js"></script>
+</body>
+</html>
