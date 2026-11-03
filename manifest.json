@@ -1,0 +1,19 @@
+{
+  "name": "Redro Workforce",
+  "short_name": "Workforce",
+  "description": "Employee and attendance management by Redro",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#111318",
+  "theme_color": "#17191f",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
