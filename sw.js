@@ -1,11 +1,11 @@
-const CACHE_NAME = "redro-workforce-shell-v4";
-const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.json", "./assets/icon.svg", "./assets/redro-workforce-logo.jpg"];
+const CACHE_NAME = "redro-workforce-shell-v5";
+const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.json", "./assets/icon.svg", "./assets/redro-workforce-logo.jpg", "./assets/brand-icon.png","./assets/app-icon-192.png","./assets/app-icon-512.png","./assets/app-icon-maskable-512.png","./assets/apple-touch-icon.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
   self.skipWaiting();
 });
 self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))));
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("redro-workforce-shell-") && key !== CACHE_NAME).map(key => caches.delete(key)))));
   self.clients.claim();
 });
 self.addEventListener("fetch", event => {
