@@ -1,4 +1,4 @@
-const CACHE_NAME = "redro-workforce-shell-v5";
+const CACHE_NAME = "redro-workforce-shell-v6";
 const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.json", "./assets/icon.svg", "./assets/redro-workforce-logo.jpg", "./assets/brand-icon.png","./assets/app-icon-192.png","./assets/app-icon-512.png","./assets/app-icon-maskable-512.png","./assets/apple-touch-icon.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
