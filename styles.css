@@ -26,7 +26,7 @@
  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
 
-.sidebar{animation:redroSlide .35s ease both}
+.sidebar{animation:redroFade .35s ease both}
 .main-area>.topbar{animation:redroFade .3s ease both}
 .welcome-row{animation:redroEnter .4s cubic-bezier(.2,.75,.25,1) both}
 .stats-grid>.stat-card{animation:redroEnter .36s ease both}
